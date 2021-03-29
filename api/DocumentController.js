@@ -16,13 +16,14 @@ class DocumentController {
       })
       await md.save()
       if (typeof body.directoryId !== 'undefined' && body.directoryId !== '') {
+       console.log(1)
         await DirectoryItem.updateOne({
           directoryId: body.directoryId
         }, {
           $push: {
             directory_item: {
               $each: [{
-                id: md._id,
+                id: mongoose.Types.ObjectId(md._id).toString(),
                 name: md.title
               }],
               $position: 0
@@ -36,7 +37,7 @@ class DocumentController {
           $push: {
             directory: {
               $each: [{
-                id: md._id,
+                id:mongoose.Types.ObjectId(md._id).toString(),
                 name: md.title,
                 page: true
               }],
@@ -133,13 +134,15 @@ class DocumentController {
           }
         })
       } else {
-        await Directory.updateOne({
-          projectId: body.projectId
-        }, {
-          $pull: {
-            directory_item: { id: body.id }
-          }
-        })
+        await Directory.updateOne({ projectId: body.projectId }, {
+      $pull: {
+        directory: {
+          id: body.id
+        }
+      }
+    }, {
+      multi: true
+    })
       }
       ctx.body = {
         code: 200,
@@ -154,6 +157,17 @@ class DocumentController {
         code: 500,
         msg: '删除错误'
       }
+    }
+  }
+
+  // 查看文档
+  async getDocument(ctx){
+    const { id } = ctx.query
+    const result = await Document.findOne({_id:id})
+    ctx.body = {
+      code:200,
+      msg:'查询成功',
+      data:result
     }
   }
 }
