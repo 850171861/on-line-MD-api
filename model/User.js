@@ -11,8 +11,8 @@ const UserSchema = new Schema({
   name: {
     type: String
   },
-   created:{
-    type: Date 
+  created: {
+    type: Date
   }
 })
 
