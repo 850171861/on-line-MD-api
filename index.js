@@ -3,13 +3,13 @@ const app = new Koa();
 import router from './routes/index.js'
 import compose from 'koa-compose'
 import koaBody from 'koa-body'
+import cors from 'koa2-cors'
 
 
 
- 
 
 // 使用koa-compose 集成所有中间件
- const middleware = compose([
+const middleware = compose([
   // post请求和图片上传
   (koaBody({
     multipart: true,
@@ -20,11 +20,12 @@ import koaBody from 'koa-body'
     onError: err => {
       console.log('koabody', err)
     }
-  }))
- ])
- app.use(middleware)
- app.use(router())
+  })),
+  cors()
+])
+app.use(middleware)
+app.use(router())
 
-app.listen(3000,()=>{
-    console.log('port 3000');
+app.listen(3000, () => {
+  console.log('port 3000');
 });
