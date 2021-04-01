@@ -28,7 +28,12 @@ class ProjectController {
 
   // 修改项目
   async updatedProject (ctx) {
-    const { uuid, name, description, publics, password, uid, roles } = ctx.request.body
+    let { uuid, name, description, publics, password, uid, roles } = ctx.request.body
+    if(publics == true){
+      password = ''
+    }
+    const token = ctx.header.authorization.split(' ')[1]
+    const { _id } = await getJwtVerify(token)
     const result = await Project.updateMany({ uuid: uuid }, {
       $set: {
         name,
@@ -36,7 +41,8 @@ class ProjectController {
         publics,
         password,
         uid,
-        roles
+        roles,
+        uid:_id
       }
     })
     if (result.ok == 1) {
@@ -108,7 +114,7 @@ class ProjectController {
     const { body } = ctx.request
     let response
     // 检查添加用户是否存在
-    const user = await User.findOne({ _id: body.uid })
+    const user = await User.findOne({ _id: body.username })
     if (user == null && typeof user.username === 'undefined') {
       response.code = 500,
       response.msg = '添加成员不存在'
