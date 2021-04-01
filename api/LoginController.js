@@ -3,9 +3,10 @@ import Ver from '../model/Ver'
 import send from '../config/emailConfig'
 import moment from 'dayjs'
 import jwt from 'jsonwebtoken'
+import { JWT_SECRET } from '../config/tokenConfig'
 class UserController {
   // 发送验证码
-  async ver (ctx) {
+  async ver(ctx) {
     // 接收客户端的数据
     const { body } = ctx.request
     // 生产随机验证码4位
@@ -46,7 +47,7 @@ class UserController {
   }
 
   // 注册接口
-  async reg (ctx) {
+  async reg(ctx) {
     // 接收客户端的数据
     const { body } = ctx.request
     const response = {}
@@ -88,7 +89,7 @@ class UserController {
   }
 
   // 登录接口
-  async login (ctx) {
+  async login(ctx) {
     const { username, password } = ctx.request.body
     const userData = await User.findOne({ username, password })
     if (userData === null) {
@@ -100,7 +101,7 @@ class UserController {
     }
     const token = jwt.sign({
       _id: userData._id
-    }, 'wmaw1i0IdL1l1o%OUOTo$Zwgsjmflaw%Fwq', {
+    }, JWT_SECRET, {
       expiresIn: '7d'
     })
 
@@ -120,7 +121,7 @@ class UserController {
   }
 
   // 重置密码
-  async reset (ctx) {
+  async reset(ctx) {
     // 接收客户端的数据
     const { body } = ctx.request
     const response = {}

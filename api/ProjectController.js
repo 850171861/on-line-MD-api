@@ -1,17 +1,21 @@
 import { v4 as uuidv4 } from 'uuid'
 import Project from '../model/Project'
 import User from '../model/User'
+import { getJwtVerify } from '../config/tokenConfig'
+
 class ProjectController {
   // 创建项目
   async createdProject (ctx) {
     const { body } = ctx.request
+    const token = ctx.header.authorization.split(' ')[1]
+    const { _id } = await getJwtVerify(token)
     const projectData = new Project({
       uuid: uuidv4(),
       name: body.name,
       description: body.description,
       publics: body.publics,
       password: body.password,
-      uid: body.uid,
+      uid: _id,
       roles: body.roles
     })
 
@@ -67,8 +71,15 @@ class ProjectController {
 
   //  查询项目
   async getProject (ctx) {
-    const { uid } = ctx.query
-    const result = await Project.find({ uid }).sort({ created: -1 })
+    const { projectId } = ctx.query
+    const token = ctx.header.authorization.split(' ')[1]
+    const { _id } = await getJwtVerify(token)
+    let result
+    if (typeof projectId === 'undefined' && projectId == null) {
+      result = await Project.find({ uid: _id }).sort({ created: -1 })
+    } else {
+      result = await Project.find({ _id: projectId, uid: _id }).sort({ created: -1 })
+    }
     ctx.body = {
       code: 200,
       msg: '查询成功',
