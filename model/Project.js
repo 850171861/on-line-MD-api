@@ -2,8 +2,8 @@ import mongoose from '../config/dbConfig'
 const Schema = mongoose.Schema
 
 const ProjectSchema = new Schema({
-  uuid:{
-   type:String
+  uuid: {
+    type: String
   },
   name: {
     type: String
@@ -14,15 +14,15 @@ const ProjectSchema = new Schema({
   publics: {
     type: Boolean
   },
-  password:{
-    type:String
+  password: {
+    type: String
   },
-  uid:{
-    type:String,ref:'user'
+  uid: {
+    type: String, ref: 'user'
   },
-  roles:{type:Array},  //create-创建者,read-只读 read-write - 读写
-   created:{
-    type: Date 
+  roles: { type: Array }, // create-创建者,read-只读 read-write - 读写
+  created: {
+    type: Date
   }
 })
 

@@ -1,11 +1,12 @@
 import { v4 as uuidv4 } from 'uuid'
 import Project from '../model/Project'
 import User from '../model/User'
+import dayjs from 'dayjs'
 import { getJwtVerify } from '../config/tokenConfig'
 
 class ProjectController {
   // 创建项目
-  async createdProject (ctx) {
+  async createdProject(ctx) {
     const { body } = ctx.request
     const token = ctx.header.authorization.split(' ')[1]
     const { _id } = await getJwtVerify(token)
@@ -27,9 +28,9 @@ class ProjectController {
   }
 
   // 修改项目
-  async updatedProject (ctx) {
+  async updatedProject(ctx) {
     let { uuid, name, description, publics, password, uid, roles } = ctx.request.body
-    if(publics == true){
+    if (publics == true) {
       password = ''
     }
     const token = ctx.header.authorization.split(' ')[1]
@@ -42,7 +43,7 @@ class ProjectController {
         password,
         uid,
         roles,
-        uid:_id
+        uid: _id
       }
     })
     if (result.ok == 1) {
@@ -59,7 +60,7 @@ class ProjectController {
   }
 
   // 删除项目
-  async deletedProject (ctx) {
+  async deletedProject(ctx) {
     const { uuid } = ctx.request.body
     const result = await Project.deleteMany({ uuid })
     if (result.ok == 1) {
@@ -76,7 +77,7 @@ class ProjectController {
   }
 
   //  查询项目
-  async getProject (ctx) {
+  async getProject(ctx) {
     const { projectId } = ctx.query
     const token = ctx.header.authorization.split(' ')[1]
     const { _id } = await getJwtVerify(token)
@@ -94,14 +95,25 @@ class ProjectController {
   }
 
   // 获取项目成员
-  async getMember (ctx) {
-    const { body } = ctx.request
-    console.log(body.uuid)
-    const result = await Project.find({ uuid: body.uuid }).populate({
+  async getMember(ctx) {
+    const { uuid } = ctx.query
+
+    let result = await Project.find({ uuid: uuid }).populate({
       path: 'uid',
       select: 'username name'
     })
       .sort({ created: -1 })
+
+    result = result.map(item => {
+      return {
+        id: item._id,
+        username: item.uid.username,
+        name: item.uid.name,
+        created: dayjs(item.created).format('YY-MM-DD HH:mm'),
+        roles: item.roles
+      }
+    })
+
     ctx.body = {
       code: 200,
       msg: '查询成功',
@@ -110,36 +122,51 @@ class ProjectController {
   }
 
   // 添加项目成员
-  async addMember (ctx) {
+  async addMember(ctx) {
     const { body } = ctx.request
-    let response
+    const response = {}
     // 检查添加用户是否存在
-    const user = await User.findOne({ _id: body.username })
-    if (user == null && typeof user.username === 'undefined') {
-      response.code = 500,
+    const user = await User.findOne({ username: body.username })
+    if (user === null) {
+      response.code = 500
       response.msg = '添加成员不存在'
     } else {
-      const projectData = new Project({
-        uuid: body.uuid,
-        name: body.name,
-        publics: body.publics,
-        password: body.password,
-        uid: body.uid,
-        roles: body.roles
-      })
-
-      await projectData.save()
-
-      response.code = 200,
-      response.msg = '添加成员成功'
+      // 检查用户是否存在当前项目组
+      const projectMember = await Project.findOne({ uid: user._id, uuid: body.uuid })
+      if (projectMember === null) {
+        const projectData = new Project({
+          uuid: body.uuid,
+          name: body.name,
+          description: body.description,
+          publics: body.publics,
+          password: body.password,
+          uid: user._id,
+          roles: body.roles
+        })
+        const member = await projectData.save()
+        const data = {}
+        data.id = member._id,
+          data.username = user.username,
+          data.name = user.name,
+          data.created = dayjs(member.created).format('YY-MM-DD HH:mm'),
+          data.roles = member.roles
+        console.log(data)
+        response.code = 200
+        response.msg = '添加成员成功'
+        response.data = data
+      } else {
+        response.code = 501
+        response.msg = '成员已存在项目中'
+      }
     }
     ctx.body = response
   }
 
   // 删除项目成员
-  async delMember (ctx) {
-    const { uuid, uid } = ctx.request.body
-    const result = await Project.deleteOne({ uuid, uid })
+  async delMember(ctx) {
+    const { id, uuid } = ctx.request.body
+    const result = await Project.deleteOne({ _id: id, uuid })
+
     ctx.body = {
       code: 200,
       msg: '删除成员成功'
@@ -147,34 +174,56 @@ class ProjectController {
   }
 
   // 项目转让
-  async transferProject (ctx) {
-    const { body } = ctx.request.body
+  async transferProject(ctx) {
+    const { body } = ctx.request
     // 检查被转让用户是否存在
-    const transferUser = await User.findOne({ _id: body.transferuid })
-    if (transferUser == null && typeof transferUser.username === 'undefined') {
-      response.code = 500,
-      response.msg = '转让用户不存在'
+    const transferUser = await User.findOne({ username: body.username })
+    if (transferUser === null) {
+      ctx.body = {
+        code: 501,
+        msg: '转让用户不存在'
+      }
+      return
     }
     // 检查转让者当前用户密码
-    const user = await User.findOne({ _id: body.uid })
-    if (user.password !== body.userPassword) {
-      response.code = 500,
-      response.msg = '输入密码错误'
+    const token = ctx.header.authorization.split(' ')[1]
+    const { _id } = await getJwtVerify(token)
+    const { password } = await User.findOne({ _id })
+    if (password !== body.password) {
+      ctx.body = {
+        code: 502,
+        msg: '密码不正确'
+      }
     } else {
-      const result = await Project.updateOne({ uuid: uuid }, {
-        $set: {
-          name: body.name,
-          description: body.description,
-          publics: body.publics,
-          password: body.password,
-          uid: body.uid,
-          roles: body.roles
+      // 检查被转让用户是否在当前项目里
+      const transferUsers = await Project.findOne({ uid: transferUser._id })
+      // 项目信息
+      const projectInfo = await Project.findOne({ uid: _id, uuid: body.uuid })
+      console.log(transferUsers._id)
+      if (transferUsers !== null) {
+        await Project.updateOne({ uid: transferUsers._id, uuid: body.uuid }, {
+          $set: {
+            title: '00000000'
+          }
+        })
+        console.log(123)
+        await Project.deleteOne({ uid: _id, uuid: body.uuid })
+        ctx.body = {
+          code: 200,
+          msg: '转让成功'
         }
-      })
-      response.code = 200,
-      response.msg = '转让成功'
+      } else {
+        await Project.updateOne({ uid: _id, uuid: body.uuid }, {
+          $set: {
+            uid: transferUser._id
+          }
+        })
+        ctx.body = {
+          code: 200,
+          msg: '转让成功'
+        }
+      }
     }
-    ctx.body = response
   }
 }
 
