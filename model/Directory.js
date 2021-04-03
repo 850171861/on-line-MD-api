@@ -5,7 +5,8 @@ const Schema = mongoose.Schema
 const DirectorySchema = new Schema({
   created: { type: Date },
   directory: { type: Array },
-  projectId: { type: String, ref: 'project' }
+  projectId: { type: String, ref: 'project' },
+  page: { type: Boolean}
 })
 
 DirectorySchema.pre('save', function (next) {

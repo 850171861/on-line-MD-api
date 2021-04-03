@@ -61,7 +61,26 @@ class ProjectController {
 
   // 删除项目
   async deletedProject(ctx) {
-    const { uuid } = ctx.request.body
+    const { uuid,name,password } = ctx.request.body
+    const token = ctx.header.authorization.split(' ')[1]
+    const { _id } = await getJwtVerify(token)
+    const  projectName  = await Project.findOne({uuid,name,uid:_id})
+    const user = await User.findOne({_id})
+    if(projectName === null){
+      ctx.body = {
+        code:500,
+        msg:'项目名称不存在'
+      }
+      return
+    }
+    if(user.password !== password){
+       ctx.body = {
+        code:500,
+        msg:'密码错误'
+      }
+      return
+    }
+
     const result = await Project.deleteMany({ uuid })
     if (result.ok == 1) {
       ctx.body = {
@@ -185,9 +204,18 @@ class ProjectController {
       }
       return
     }
-    // 检查转让者当前用户密码
+    // 当前项目不给转让给自己
     const token = ctx.header.authorization.split(' ')[1]
     const { _id } = await getJwtVerify(token)
+    if(transferUser._id == _id){
+      ctx.body = {
+        code:502,
+        msg:'项目不能转让给自己'
+      }
+      return
+    }
+
+    // 检查转让者当前用户密码
     const { password } = await User.findOne({ _id })
     if (password !== body.password) {
       ctx.body = {
@@ -199,14 +227,13 @@ class ProjectController {
       const transferUsers = await Project.findOne({ uid: transferUser._id })
       // 项目信息
       const projectInfo = await Project.findOne({ uid: _id, uuid: body.uuid })
-      console.log(transferUsers._id)
       if (transferUsers !== null) {
-        await Project.updateOne({ uid: transferUsers._id, uuid: body.uuid }, {
+        await Project.updateOne({ uid: transferUser._id, uuid: body.uuid }, {
           $set: {
-            title: '00000000'
+            roles: projectInfo.roles
           }
         })
-        console.log(123)
+        
         await Project.deleteOne({ uid: _id, uuid: body.uuid })
         ctx.body = {
           code: 200,

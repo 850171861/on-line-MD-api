@@ -15,36 +15,41 @@ class DocumentController {
         content: body.content
       })
       await md.save()
-      if (typeof body.directoryId !== 'undefined' && body.directoryId !== '') {
-        console.log(1)
-        await DirectoryItem.updateOne({
-          directoryId: body.directoryId
-        }, {
-          $push: {
-            directory_item: {
-              $each: [{
-                id: mongoose.Types.ObjectId(md._id).toString(),
-                name: md.title
-              }],
-              $position: 0
-            }
-          }
-        })
+      if (body.directoryId !== '') {
+         let isDirectoryItem = await DirectoryItem.findOne({directoryId: body.directoryId})
+         if(isDirectoryItem !== null){
+            await DirectoryItem.updateOne({
+             directoryId: body.directoryId
+            }, {
+             $push: {
+               directory_item: {
+                 $each: [{
+                   id: mongoose.Types.ObjectId(md._id).toString(),
+                   name: md.title
+                 }],
+                 $position: 0
+               }
+              }
+             })
+         }else{
+           let data = new DirectoryItem({directoryId: body.directoryId,directory_item:[{
+                   id: mongoose.Types.ObjectId(md._id).toString(),
+                   name: md.title
+                 }]})
+           data.save()
+         }
       } else {
-        await Directory.updateOne({
-          projectId: body.projectId
-        }, {
-          $push: {
-            directory: {
-              $each: [{
-                id: mongoose.Types.ObjectId(md._id).toString(),
-                name: md.title,
-                page: true
-              }],
-              $position: 0
-            }
-          }
-        })
+        let isDirectory = await Directory.findOne({projectId: body.projectId})
+        if(isDirectory === null){
+            let data = new Directory({projectId: body.projectId,
+            page: true,
+            directory:[{
+                   id: mongoose.Types.ObjectId(md._id).toString(),
+                   name: md.title
+                 }]})
+           data.save()
+        }
+
       }
       ctx.body = {
         code: 200,

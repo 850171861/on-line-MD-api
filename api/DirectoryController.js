@@ -8,11 +8,8 @@ class DirectoryController {
     const { body } = ctx.request
 
     const DirectoryData = new Directory({
-      projectId: '606133d905d1c44e3800e488',
-      directory: [
-        { name1: 'page1', id: uuidv4() },
-        { name2: 'page2', id: uuidv4() }
-      ]
+      projectId: body.projectId,
+      directory: [ { name: body.name, id: uuidv4() }]
     })
     await DirectoryData.save()
     ctx.body = {
@@ -40,7 +37,8 @@ class DirectoryController {
         $unwind: '$directory'
       }
     ])
-
+    console.log(result)
+    // 修改数据结构
     result.forEach(element => {
       element.children.forEach(element1 => {
         if (element.directory.id == element1.directoryId) {
@@ -49,6 +47,10 @@ class DirectoryController {
         }
       })
     })
+
+
+
+    
 
     ctx.body = {
       code: 200,
@@ -60,7 +62,7 @@ class DirectoryController {
   // 修改目录
   async updateDirectory(ctx) {
     const { body } = ctx.request
-    await Directory.updateOne(
+    const a =await Directory.updateOne(
       { projectId: body.projectId, 'directory.id': body.directory_id },
       {
         $set: {
@@ -68,7 +70,7 @@ class DirectoryController {
         }
       }
     )
-
+console.log(a)
     ctx.body = {
       code: 200,
       msg: '修改成功'
@@ -78,8 +80,8 @@ class DirectoryController {
   // 删除目录
   async deleteDirectory(ctx) {
     const { body } = ctx.request
-
-    await Directory.updateOne({ projectId: body.projectId }, {
+   
+    await Directory.update({ projectId: body.projectId }, {
       $pull: {
         directory: {
           id: body.directory_id
@@ -99,10 +101,9 @@ class DirectoryController {
     const { body } = ctx.request
 
     const DirectoryChildren = new DirectoryItem({
-      directoryId: '60617b8b8628f9200c858620',
+      directoryId: body.directoryId,
       directory_item: [
-        { name1: 'page1', id: uuidv4() },
-        { name2: 'page2', id: uuidv4() }
+        { name: 'page1', id: uuidv4() }
       ]
     })
     await DirectoryChildren.save()
