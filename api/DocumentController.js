@@ -39,8 +39,6 @@ class DocumentController {
            data.save()
          }
       } else {
-        let isDirectory = await Directory.findOne({projectId: body.projectId})
-        if(isDirectory === null){
             let data = new Directory({projectId: body.projectId,
             page: true,
             directory:[{
@@ -48,8 +46,6 @@ class DocumentController {
                    name: md.title
                  }]})
            data.save()
-        }
-
       }
       ctx.body = {
         code: 200,
@@ -76,35 +72,80 @@ class DocumentController {
       const md = await Document.findOneAndUpdate(
         { _id: body.id },
         { $set: { title: body.title, content: body.content } }, { new: true })
-      if (typeof body.directoryId !== 'undefined' && body.directoryId !== '') {
-        await DirectoryItem.updateOne({
+      if (body.directoryId !== '') {
+         await Directory.deleteOne({projectId: body.projectId,'directory.id': body.id})
+        const isDirectoryItem = await DirectoryItem.findOne({directoryId: body.directoryId,'directory_item.id': body.id})
+        if(isDirectoryItem !== null){
+         await DirectoryItem.updateOne({
+          directoryId: body.directoryId,'directory_item.id': body.id
+        }, {
+          $set: {
+            'directory_item.$.name': md.title
+          }
+        })
+        }else{
+
+           // 删除
+       const a =  await DirectoryItem.update({}, {
+          $pull: {
+            directory_item: {
+              id:mongoose.Types.ObjectId(md._id).toString()
+            }
+          }
+        }, {
+        multi: true
+      })
+      const isDirectoryItem = await DirectoryItem.findOne({directoryId: body.directoryId})
+      if(isDirectoryItem !== null){
+      // 修改
+          await DirectoryItem.updateOne({
           directoryId: body.directoryId
         }, {
           $push: {
             directory_item: {
               $each: [{
-                id: md._id,
+                id:mongoose.Types.ObjectId(md._id).toString(),
                 name: md.title
               }],
               $position: 0
             }
           }
         })
+      }else{
+        let data = new DirectoryItem({
+          directoryId: body.directoryId,
+          directory_item:[{
+                id: mongoose.Types.ObjectId(md._id).toString(),
+                name: md.title
+              }]
+        })
+       data.save()
+      }
+        }
       } else {
-        await Directory.updateOne({
-          projectId: body.projectId
-        }, {
-          $push: {
-            directory: {
-              $each: [{
-                id: md._id,
-                name: md.title,
-                page: true
-              }],
-              $position: 0
+        
+           // 删除
+        await DirectoryItem.update({}, {
+          $pull: {
+            directory_item: {
+              id:mongoose.Types.ObjectId(md._id).toString()
             }
           }
+        }, {
+        multi: true
+      })
+
+        let data = new Directory({
+          projectId: body.projectId,
+          page:true,
+          directory:[{
+            id:mongoose.Types.ObjectId(md._id).toString(),
+            name: md.title
+          }]
         })
+
+        data.save()
+        
       }
       ctx.body = {
         code: 200,
@@ -130,8 +171,8 @@ class DocumentController {
     try {
       //  事务 - 数据一致性
       await Document.deleteOne({ _id: body.id })
-      if (typeof body.directoryId !== 'undefined' && body.directoryId !== '') {
-        await DirectoryItem.updateOne({
+      if (body.directoryId !== '') {
+        await DirectoryItem.update({
           directoryId: body.directoryId
         }, {
           $pull: {
@@ -139,16 +180,11 @@ class DocumentController {
           }
         })
       } else {
-        await Directory.updateOne({ projectId: body.projectId }, {
-          $pull: {
-            directory: {
-              id: body.id
-            }
-          }
-        }, {
-          multi: true
-        })
+        console.log(body)
+      await Directory.deleteOne({projectId: body.projectId,'directory.id': body.id})
       }
+      
+    
       ctx.body = {
         code: 200,
         msg: '删除成功'

@@ -10,8 +10,5 @@ router.post('/get', DirectoryController.getDirectory)
 router.post('/update', DirectoryController.updateDirectory)
 router.post('/delete', DirectoryController.deleteDirectory)
 
-// 子目录
-router.post('/create/children', DirectoryController.createDirectoryChildren)
-router.post('/update/children', DirectoryController.updateDirectoryChildren)
-router.post('/delete/children', DirectoryController.deleteDirectoryChildren)
+
 export default router
