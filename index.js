@@ -8,7 +8,9 @@ import { JWT_SECRET } from './config/tokenConfig'
 const app = new Koa()
 
 // 定义公共路径 不需要jwt鉴权
-const jwt = JWT({ secret: JWT_SECRET }).unless({ path: [/\/login/] })
+const jwt = JWT({ secret: JWT_SECRET }).unless({
+  path: [/^\/project/, /^\/directory/, /^\/login/,]
+})
 
 // 使用koa-compose 集成所有中间件
 const middleware = compose([

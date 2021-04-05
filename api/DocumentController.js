@@ -180,7 +180,6 @@ class DocumentController {
           }
         })
       } else {
-        console.log(body)
       await Directory.deleteOne({projectId: body.projectId,'directory.id': body.id})
       }
       

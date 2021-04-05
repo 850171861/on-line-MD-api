@@ -15,4 +15,8 @@ router.post('/addMember', ProjectController.addMember)
 router.post('/delMember', ProjectController.delMember)
 router.post('/transferProject', ProjectController.transferProject)
 
+
+router.post('/password', ProjectController.projectPassword)
+
+
 export default router

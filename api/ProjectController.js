@@ -3,7 +3,7 @@ import Project from '../model/Project'
 import User from '../model/User'
 import dayjs from 'dayjs'
 import { getJwtVerify } from '../config/tokenConfig'
-
+import mongoose from 'mongoose'
 class ProjectController {
   // 创建项目
   async createdProject(ctx) {
@@ -97,14 +97,34 @@ class ProjectController {
 
   //  查询项目
   async getProject(ctx) {
-    const { projectId } = ctx.query
-    const token = ctx.header.authorization.split(' ')[1]
-    const { _id } = await getJwtVerify(token)
+    const { projectId,projectUUID } = ctx.query
+    let token 
+    let user
+    if(ctx.header.authorization){
+     token = ctx.header.authorization.split(' ')[1]
+      user = await getJwtVerify(token)
+    }
+
     let result
-    if (typeof projectId === 'undefined' && projectId == null) {
-      result = await Project.find({ uid: _id }).sort({ created: -1 })
-    } else {
-      result = await Project.find({ _id: projectId, uid: _id }).sort({ created: -1 })
+
+    if (typeof projectId === 'undefined' && typeof projectUUID === 'undefined') {
+      result = await Project.find({ uid: user._id }).sort({ created: -1 })
+    } else if(projectId !== null && typeof projectUUID === 'undefined' ){
+      result = await Project.find({ _id:projectId, uid: user._id }).sort({ created: -1 })
+    }else if(projectUUID !== null && typeof token !== 'undefined'){
+      result = await Project.find({ uuid:projectUUID, uid: user._id }).sort({ created: -1 })
+      result = result.map((item) => {
+        return {
+          roles:item.roles
+        }
+      })
+    }else{
+      result = await Project.findOne({ uuid:projectUUID }).sort({ created: -1 })
+      if(!result.publics){
+      result = {roles:['read'],password:true}
+      }else{
+      result = {roles:['read']}
+      }
     }
     ctx.body = {
       code: 200,
@@ -113,6 +133,23 @@ class ProjectController {
     }
   }
 
+  // 项目访问密码
+  async projectPassword(ctx){
+    const { projectId,password } = ctx.request.body
+    const result = await Project.findOne({ uuid:projectId }).sort({ created: -1 })
+    if(result.password === password){
+      ctx.body = {
+        code:200
+      }
+    }else{
+        ctx.body = {
+        code:500,
+        msg:'访问密码错误'
+      }
+      }
+  }
+
+  
   // 获取项目成员
   async getMember(ctx) {
     const { uuid } = ctx.query
@@ -169,7 +206,6 @@ class ProjectController {
           data.name = user.name,
           data.created = dayjs(member.created).format('YY-MM-DD HH:mm'),
           data.roles = member.roles
-        console.log(data)
         response.code = 200
         response.msg = '添加成员成功'
         response.data = data
